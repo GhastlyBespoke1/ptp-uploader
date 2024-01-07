@@ -34,19 +34,22 @@ function appendBuffer(buffer1, buffer2) {
     return tmp.buffer;
 }
 
-for(let i =0; i < utils.length; i++) {
+for(let i = 0; i < utils.length; i++) {
   console.log("Getting url " + utils[i].url)
   GM_xmlhttpRequest({
     method: "GET", url: utils[i].url, responseType: "blob",
     onload: function (response) {
+      if(response.status == 200) {
         file = window.URL.createObjectURL(response.responseXML, { type: utils[i].type });
-        //let ree = new Blob(response.data, "text/javascript")
         urls[utils[i].store] = file;
+      } else {
+        console.log("Failed to load url: "  + utils[i].url)
+      }
     },
-    onerror: response => { reject(defaultErrorHandler(response)); },
-    ontimeout: response => { reject(defaultTimeoutHandler(response)); },
-});
-}
+    onerror: response => { console.log("An Error has occured...") },
+    ontimeout: response => { console.log("An Error has occured...") },
+  });
+};
 
 /*
   FOLDER DRAG-N-DROP
