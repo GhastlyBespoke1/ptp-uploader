@@ -83,7 +83,9 @@ async function getAllFileEntries(dataTransferItemList) {
     while (queue.length > 0) {
         let entry = queue.shift();
         if (entry.isFile) {
-            fileEntries.push(entry);
+            fileEntries.push(new Promise((resolve, reject) => {
+                entry.file(resolve, reject);
+            }));
         } else if (entry.isDirectory) {
             let reader = entry.createReader();
             queue.push(...await readAllDirectoryEntries(reader));
@@ -122,7 +124,7 @@ async function getTotalSize(fileEntries) {
     let totalSize = 0;
 
     for (const fileEntry of fileEntries) {
-        const file = await getFileFromEntry(fileEntry);
+        const file = fileEntry;
         totalSize += file.size;
     }
 
@@ -162,7 +164,7 @@ async function readInChunks(fileEntries, chunkSize) {
     let folderName;
 
     while (fileIndex < fileEntries.length) {
-        const file = await getFileFromEntry(fileEntries[fileIndex]);
+        const file = await fileEntries[fileIndex];
         const path = file.webkitRelativePath.split('/');
         files.push({ "length": file.size, "path": path.slice(1) });
         folderName = path[0];
@@ -359,7 +361,7 @@ async function getScreenshots(fileEntries) {
   document.getElementById("autofill_row").append(idkwhatthisis);
 
     const box = document.getElementById("screenshots");
-    const file = await getFileFromEntry(fileEntries[0]);  // TODO: Pick a file from multiple
+    const file = fileEntries[0];  // TODO: Pick a file from multiple
     // Initialize
     const ffmpeg = new FFmpegWASM.FFmpeg();
     console.log("ree1")
@@ -502,7 +504,7 @@ async function getScreenshots(fileEntries) {
   MEDIAINFO
 */
 async function getMediaInfo(fileEntries) {
-    const file = await getFileFromEntry(fileEntries[0]); // TODO: Pick a file from multiple
+    const file = await fileEntries[0]; // TODO: Pick a file from multiple
     const mediaInfoConfig = { format: "text" };
     MediaInfo(mediaInfoConfig, (mediainfo) => {
         const readChunk = (chunkSize, offset) =>
@@ -530,20 +532,45 @@ async function getMediaInfo(fileEntries) {
   MAIN
 */
 async function main() {
+    const uploadGrid = document.querySelector("#upload_table > div.grid");
+    labelDiv = document.createElement("div");
+    labelDiv.className = "grid__item grid-u-2-10";
+    const label = document.createElement("label");
+    label.className = "form__label";
+    label.textContent = "Media file(s):";
+    labelDiv.insertAdjacentElement("beforeend", label);
+    uploadGrid.insertAdjacentElement("beforeend", labelDiv);
     const dropzone = document.querySelector(".grid__item.grid-u-8-10");  // temporary
 
-    const text = document.createElement("p");
-    text.textContent = "temp";
-    text.id = "items";
-    dropzone.insertAdjacentElement("afterend", text);
+    inputDiv = document.createElement("div");
+    inputDiv.className = "grid__item grid-u-8-10";
+    const input = document.createElement("input");
+    input.textContent = "temp";
+    input.type = "file";
+    input.size = "50";
+    input.id = "items";
+    inputDiv.insertAdjacentElement("beforeend", input);
+    uploadGrid.insertAdjacentElement("beforeend", inputDiv);
 
     dropzone.addEventListener("dragover", function (event) {
         event.preventDefault();
     });
 
-    dropzone.addEventListener("drop", async function (event) {
+    input.addEventListener("drop", async function (event) {
         event.preventDefault();
-        const fileEntries = await getAllFileEntries(event.dataTransfer.items);
+        const fileEntries = getAllFileEntries(event.dataTransfer.items);
+        fileEntries.then(function(results){
+            Promise.all(results).then(function(result) {
+                getTorrent(result);
+                getMediaInfo(result);
+                getScreenshots(result);
+            });
+        });
+    });
+    input.addEventListener("change", async function (event) {
+        event.preventDefault();
+        const fileEntries = this.files;
+        console.log(fileEntries);
 
         getTorrent(fileEntries);
         getMediaInfo(fileEntries);
