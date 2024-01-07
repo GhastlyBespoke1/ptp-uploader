@@ -4,9 +4,8 @@
 // @author      Perilune
 // @namespace   https://github.com/soranosita
 // @match       https://passthepopcorn.me/upload.php
-// @require     https://gist.github.com/po5/740d100c992f1315e81dbeca9a4b425a/raw/mediainfo.lib.js
-// @require     https://raw.githubusercontent.com/coollachlan8/ptp-scripts/main/worker.js
-// @require     https://raw.githubusercontent.com/coollachlan8/ptp-scripts/main/ree.js
+// @require     https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/mediainfo.lib.js
+// @require     https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/ffmpeg.js
 // @grant       GM_xmlhttpRequest
 // @version     0.1
 // ==/UserScript==
@@ -19,10 +18,16 @@ async function getFileFromEntry(fileEntry) {
         fileEntry.file(resolve, reject);
     });
 }
+let getWorkerUrl = "https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/814.ffmpeg.js";
+let getWASMUrl = "https://github.com/coollachlan8/ptp-uploader/raw/main/utils/ffmpeg-core.wasm";
+let getCoreUrl = "https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/ffmpeg-core.js"
+let utils = [
+  { url: "https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/814.ffmpeg.js", type: "application/js", store: "workerUrl"},
+  { url: "https://github.com/coollachlan8/ptp-uploader/raw/main/utils/ffmpeg-core.wasm", type: "application/wasm", store: "wasmUrl"},
+  { url: "https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/ffmpeg-core.js", type: "application/js", store: "ffmpegCore"},
+]
 
-let workerUrl = ""
-let wasmUrl = ""
-let ffmpegCore = ""
+let urls = { wasmUrl: "", workerUrl: "", ffmpegCore: ""};
 
 function appendBuffer(buffer1, buffer2) {
     let tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
@@ -31,40 +36,20 @@ function appendBuffer(buffer1, buffer2) {
     return tmp.buffer;
 }
 
-//get worker url
-GM_xmlhttpRequest({ method: 'GET', url: "https://raw.githubusercontent.com/soranosita/autogen/main/scripts/814.ffmpeg.js", responseType:"blob",
-								onload: function(response) {
-									console.log(response)
-                  var file = window.URL.createObjectURL(response.responseXML);
-                  //let ree = new Blob(response.data, "text/javascript")
-                  workerUrl = file
-								},
-								onerror: response => { reject(defaultErrorHandler(response)) },
-								ontimeout: response => { reject(defaultTimeoutHandler(response)) },
-							});
+for(let i =0; i < utils.length; i++) {
+  console.log("Getting url " + utils[i].url)
+  GM_xmlhttpRequest({
+    method: "GET", url: utils[i].url, responseType: "blob",
+    onload: function (response) {
+        file = window.URL.createObjectURL(response.responseXML, { type: utils[i].type });
+        //let ree = new Blob(response.data, "text/javascript")
+        urls[utils[i].store] = file;
+    },
+    onerror: response => { reject(defaultErrorHandler(response)); },
+    ontimeout: response => { reject(defaultTimeoutHandler(response)); },
+});
+}
 
-//get wasm url
-GM_xmlhttpRequest({ method: 'GET', url: "https://github.com/soranosita/autogen/raw/main/scripts/ffmpeg-core.wasm", responseType:"blob",
-								onload: function(response) {
-									console.log(response)
-                  var file = window.URL.createObjectURL(response.responseXML, { type: 'application/wasm' });
-                  //let ree = new Blob(response.data, "text/javascript")
-                  wasmUrl= file
-								},
-								onerror: response => { reject(defaultErrorHandler(response)) },
-								ontimeout: response => { reject(defaultTimeoutHandler(response)) },
-							});
-// get FFMPEG Core Url
-GM_xmlhttpRequest({ method: 'GET', url: "https://raw.githubusercontent.com/soranosita/autogen/main/scripts/ffmpeg-core.js", responseType:"blob",
-								onload: function(response) {
-									console.log(response)
-                  var file = window.URL.createObjectURL(response.responseXML);
-                  //let ree = new Blob(response.data, "text/javascript")
-                  ffmpegCore= file
-								},
-								onerror: response => { reject(defaultErrorHandler(response)) },
-								ontimeout: response => { reject(defaultTimeoutHandler(response)) },
-							});
 /*
   FOLDER DRAG-N-DROP
   From https://stackoverflow.com/a/53058574
@@ -163,7 +148,7 @@ async function readInChunks(fileEntries, chunkSize) {
 
     while (fileIndex < fileEntries.length) {
         const file = await getFileFromEntry(fileEntries[fileIndex]);
-        const path = file.webkitRelativePath.split('/');
+        const path = file.webkitRelativePath.split("/");
         files.push({ "length": file.size, "path": path.slice(1) });
         folderName = path[0];
 
@@ -212,11 +197,11 @@ function bencode(data) {
         const encodedBytes = encoder.encode(data);
         return `${encodedBytes.length}:${data}`;
     } else if (Array.isArray(data)) {
-        return `l${data.map(bencode).join('')}e`;
+        return `l${data.map(bencode).join("")}e`;
     } else if (typeof data === "object") {
         const keys = Object.keys(data).sort();
         const encodedPairs = keys.map(key => `${bencode(key)}${bencode(data[key])}`);
-        return `d${encodedPairs.join('')}e`;
+        return `d${encodedPairs.join("")}e`;
     }
 }
 
@@ -242,12 +227,11 @@ function createTorrent(announce, filesKey, filesValue, nameValue, chunkSize, has
     const bencoded2 = bencoded.substring(bencoded.indexOf("7:private"));
 
     const torrent = new Blob([bencoded1, ...hashes, bencoded2], { type: "application/x-bittorrent" });
-    return torrent
+    return torrent;
 }
 
 
 async function getTorrent(fileEntries) {
-    console.info(fileEntries);
     const itemsElement = document.getElementById("items");
     const totalSize = await getTotalSize(fileEntries);
     const chunkSize = 2 ** (Math.floor(Math.log2(totalSize / 1000)));
@@ -265,13 +249,13 @@ async function getTorrent(fileEntries) {
         itemsElement.textContent = `${i}/${totalChunks} hashes`;
         hashes.push(new Uint8Array(hash));
     }
-    itemsElement.textContent = ``;
+    itemsElement.textContent = "";
     let announce = "";
     const getAnnounce = document.querySelectorAll("input[type=text]");
     console.log(announce);
     let ann_url = "";
     for (let i = 0; i < getAnnounce.length; i++) {
-        if(getAnnounce[i].value.startsWith("http") && getAnnounce[i].value.includes("announce")) {
+        if (getAnnounce[i].value.startsWith("http") && getAnnounce[i].value.includes("announce")) {
             announce = getAnnounce[i].value;
             break;
         }
@@ -288,30 +272,29 @@ async function getTorrent(fileEntries) {
         filesValue = files[0].length;
         nameValue = fileEntries[0].name;
     } else {
-        filesKey = "files"
+        filesKey = "files";
         filesValue = files;
         nameValue = folderName;
     }
 
     const blob = createTorrent(announce, filesKey, filesValue, nameValue, chunkSize, hashes, source);
+    console.log(blob);
+
     const filename = nameValue + ".torrent";
-
-    const torrentFile = new File([blob], filename, { type: 'application/x-bittorrent' });
-    const container = new DataTransfer();
-    container.items.add(torrentFile);
-    //document.getElementById("file").files = container;
-
-    const content = document.getElementById("content");
-    for (const file of files) {
-        content.innerHTML += file.path.join('/') + "<br>";
-    }
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.textContent = "Download";
-    document.getElementById("items").append(link);
+    return new Promise((resolve, reject) => {
+        var xhr = new XMLHttpRequest();
+        xhr.onload = function() {
+            let file = new File([blob], filename, {type: "application/x-bittorrent", lastModified:new Date().getTime()}, 'utf-8');
+            console.log(file);
+            let container = new DataTransfer();
+            container.items.add(file);
+            document.querySelector('input#file').files = container.files;
+            console.log("we got the files: ", document.querySelector('input#file').files);
+            resolve()
+        };
+        xhr.open("GET", "");
+        xhr.send();
+  })
 }
 
 
@@ -354,30 +337,30 @@ function generateTimestamps(duration, numScreenshots) {
 
 
 async function getScreenshots(fileEntries) {
-  let idkwhatthisis = document.createElement("div")
-  idkwhatthisis.id ="screenshots"
-  document.getElementById("autofill_row").append(idkwhatthisis);
+    let idkwhatthisis = document.createElement("div");
+    idkwhatthisis.id = "screenshots";
+    document.getElementById("autofill_row").append(idkwhatthisis);
 
     const box = document.getElementById("screenshots");
     const file = await getFileFromEntry(fileEntries[0]);  // TODO: Pick a file from multiple
     // Initialize
     const ffmpeg = new FFmpegWASM.FFmpeg();
-    console.log("ree1")
-    ffmpeg.on('log', ({ type, message }) => {
+    console.log("ree1");
+    ffmpeg.on("log", ({ type, message }) => {
         console.log(`FFMPEG [${type}]: ${message}`);
     });
 
-    await ffmpeg.load( {
-        "workerLoadURL": workerUrl,
-        "wasmURL": wasmUrl,
-        "coreURL": ffmpegCore
-    })
-    console.log(file)
-    await ffmpeg.createDir('/videos');
-    await ffmpeg.mount('WORKERFS', { files: [file] }, '/videos');
+    await ffmpeg.load({
+        "workerLoadURL": urls['workerUrl'],
+        "wasmURL": urls['wasmUrl'],
+        "coreURL": urls['ffmpegCore']
+    });
+    console.log(file);
+    await ffmpeg.createDir("/videos");
+    await ffmpeg.mount("WORKERFS", { files: [file] }, "/videos");
 
     // Load
-    console.log("loaded")
+    console.log("loaded");
 
     // Get duration
     const filepath = `/videos/${file.name}`;
@@ -386,18 +369,18 @@ async function getScreenshots(fileEntries) {
     const logOutputCb = ({ type, message }) => {
         duration = parseDuration(message);
         if (duration) {
-            ffmpeg.off('log', logOutputCb);
+            ffmpeg.off("log", logOutputCb);
         }
     };
-    ffmpeg.on('log', logOutputCb);
+    ffmpeg.on("log", logOutputCb);
     await ffmpeg.exec([
-        '-i', filepath,
-        '-an',
-        '-vn',
-        '-sn',
-        '-hide_banner',
+        "-i", filepath,
+        "-an",
+        "-vn",
+        "-sn",
+        "-hide_banner",
     ]);
-    ffmpeg.off('log', logOutputCb);
+    ffmpeg.off("log", logOutputCb);
 
     // Take screenshots
     const numScreenshots = 8;
@@ -412,37 +395,37 @@ async function getScreenshots(fileEntries) {
     let next = 1;
     let processed = 0;
 
-    const blurryAlert = document.createElement('span');
+    const blurryAlert = document.createElement("span");
     blurryAlert.textContent = "🌫️";
 
     for (const timestamp of timestamps) {
         const timestampH = formatTimestamp(timestamp);
         await ffmpeg.exec([
-            '-ss', `${timestamp}`,
-            '-i', filepath,
-            '-an',
-            '-sn',
-            '-frames:v', '1',
+            "-ss", `${timestamp}`,
+            "-i", filepath,
+            "-an",
+            "-sn",
+            "-frames:v", "1",
             `screen_${timestamp}.png`
         ]);
         console.info(++next <= numScreenshots ? `Generated screenshot at ${timestampH}. Generating ${next} of ${numScreenshots} screenshots.`
-                     : `Generated ${numScreenshots} screenshots.`);
+            : `Generated ${numScreenshots} screenshots.`);
 
         const thumbData = await ffmpeg.readFile(`screen_${timestamp}.png`);
-        const thumbBlob = new Blob([thumbData.buffer], { type: 'image/png' });
+        const thumbBlob = new Blob([thumbData.buffer], { type: "image/png" });
         // TODO: saveSS64(thumbBlob, timestampH);
         const objectURL = URL.createObjectURL(thumbBlob);
 
         const imgId = `outputImage_${timestampH}`;
-        const imgWrap = document.createElement('div');
-        imgWrap.className = 'screenshot';
+        const imgWrap = document.createElement("div");
+        imgWrap.className = "screenshot";
         imgWrap.innerHTML = `<span class="ts">${timestampH}</span><input type="checkbox" id="selected_${timestampH}" />`;
-        const imgElement = document.createElement('img');
+        const imgElement = document.createElement("img");
         imgElement.id = imgId;
         imgElement.src = objectURL;
         imgElement.onload = () => {
             // Not always loading for some reason...
-            if (typeof cv == 'undefined') {
+            if (typeof cv == "undefined") {
                 validScreenshots++;
                 return;
             }
@@ -458,7 +441,7 @@ async function getScreenshots(fileEntries) {
             console.info(`Average intensity (brightness): ${averageIntensity}`);
             if (isDark) {
                 darkScreenshots++;
-                console.info('Dark image');
+                console.info("Dark image");
             }
 
             // Check blurriness
@@ -472,11 +455,11 @@ async function getScreenshots(fileEntries) {
             console.info(`Variance (blurriness): ${variance}`);
             if (isBlurry) {
                 blurryScreenshots++;
-                console.info('Blurry image');
+                console.info("Blurry image");
                 imgWrap.prepend(blurryAlert.cloneNode(true));
             }
 
-            imgElement.title = `Intensity (brightness): ${averageIntensity}, variance (blurriness): ${variance}`
+            imgElement.title = `Intensity (brightness): ${averageIntensity}, variance (blurriness): ${variance}`;
             if (!isBlurry && !isDark) {
                 validScreenshots++;
             }
@@ -490,7 +473,7 @@ async function getScreenshots(fileEntries) {
             mean.delete();
             stddev.delete();
         };
-        const ssOutput = document.getElementById('screenshots');
+        const ssOutput = document.getElementById("screenshots");
         ssOutput
             .appendChild(imgWrap)
             .appendChild(imgElement);
@@ -506,23 +489,37 @@ async function getMediaInfo(fileEntries) {
     const mediaInfoConfig = { format: "text" };
     MediaInfo(mediaInfoConfig, (mediainfo) => {
         const readChunk = (chunkSize, offset) =>
-        new Promise((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = (event) => {
-                if (event.target.error) {
-                    reject(event.target.error)
-                } else {
-                    resolve(new Uint8Array(event.target.result));
-                }
-            }
-            reader.readAsArrayBuffer(file.slice(offset, offset + chunkSize))
-        });
+            new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    if (event.target.error) {
+                        reject(event.target.error);
+                    } else {
+                        resolve(new Uint8Array(event.target.result));
+                    }
+                };
+                reader.readAsArrayBuffer(file.slice(offset, offset + chunkSize));
+            });
 
         mediainfo.analyzeData(() => file.size, readChunk)
             .then((result) => {
-            document.getElementById('release_desc').value += "[mediainfo]\n" + result.replace(/^Format\s{7}(\s*)/m, 'Complete name$1: ' + file.name + '\nFormat       $1') + "[/mediainfo]\n";
-        })
+                document.getElementById("release_desc").value += "[mediainfo]\n" + result.replace(/^Format\s{7}(\s*)/m, "Complete name$1: " + file.name + "\nFormat       $1") + "[/mediainfo]\n";
+            });
     });
+}
+
+
+function testme() {
+  const a = document.createElement("a");
+  console.log(document.getElementById('file').files)
+  var myfile = document.getElementById('file').files[0];
+  var myfilename = document.getElementById('file').files[0].name;
+  var myblob = new Blob([myfile]);
+  var myurl  = URL.createObjectURL(myblob);
+  a.href = myurl;
+  a.textContent = "[Download]"
+  a.download = myfilename;
+  document.querySelector('#file').nextElementSibling.insertAdjacentElement("afterend", a);
 }
 
 
@@ -545,8 +542,10 @@ async function main() {
         event.preventDefault();
         const fileEntries = await getAllFileEntries(event.dataTransfer.items);
 
-        getTorrent(fileEntries);
-        getMediaInfo(fileEntries);
+        await getTorrent(fileEntries);
+        await testme();  // Fails if I do it immediately O_O
+
+        // getMediaInfo(fileEntries);
         getScreenshots(fileEntries);
     });
 }
