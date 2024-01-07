@@ -32,7 +32,7 @@ function appendBuffer(buffer1, buffer2) {
 }
 
 //get worker url
-GM_xmlhttpRequest({ method: 'GET', url: "https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/umd/814.ffmpeg.js", responseType:"blob",
+GM_xmlhttpRequest({ method: 'GET', url: "https://raw.githubusercontent.com/soranosita/autogen/main/scripts/814.ffmpeg.js", responseType:"blob",
 								onload: function(response) {
 									console.log(response)
                   var file = window.URL.createObjectURL(response.responseXML);
@@ -317,7 +317,7 @@ async function getTorrent(fileEntries) {
 
 /*
   SCREENSHOTS
-  Many thanks to greenprogchrome-extension://dhdgffkkebhmkfjojejmpbldmpobfkfo/options.html#nav=55a20e03-bf90-4199-a7e4-c6689f346fe4+editor
+  Many thanks to greenprog
 */
 function parseDuration(durString) {
     const regex = /^\s*Duration: (\d{2}):(\d{2}):(\d{2})\.(\d{2})/;
@@ -356,7 +356,7 @@ function generateTimestamps(duration, numScreenshots) {
 async function getScreenshots(fileEntries) {
   let idkwhatthisis = document.createElement("div")
   idkwhatthisis.id ="screenshots"
-  document.getElementById("items").append(idkwhatthisis);
+  document.getElementById("autofill_row").append(idkwhatthisis);
 
     const box = document.getElementById("screenshots");
     const file = await getFileFromEntry(fileEntries[0]);  // TODO: Pick a file from multiple
@@ -364,16 +364,14 @@ async function getScreenshots(fileEntries) {
     const ffmpeg = new FFmpegWASM.FFmpeg();
     console.log("ree1")
     ffmpeg.on('log', ({ type, message }) => {
-      console.log(`FFMPEG [${type}]: ${message}`);
-   });
-    console.log(workerUrl)
-    console.log(wasmUrl)
-    console.log(ffmpegCore)
-      await ffmpeg.load( {
+        console.log(`FFMPEG [${type}]: ${message}`);
+    });
+
+    await ffmpeg.load( {
         "workerLoadURL": workerUrl,
         "wasmURL": wasmUrl,
         "coreURL": ffmpegCore
-      })
+    })
     console.log(file)
     await ffmpeg.createDir('/videos');
     await ffmpeg.mount('WORKERFS', { files: [file] }, '/videos');
