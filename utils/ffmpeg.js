@@ -52,12 +52,11 @@
                     (e.CREATE_DIR = "CREATE_DIR"),
                     (e.LIST_DIR = "LIST_DIR"),
                     (e.DELETE_DIR = "DELETE_DIR"),
+                    (e.MOUNT = "MOUNT"),
                     (e.ERROR = "ERROR"),
                     (e.DOWNLOAD = "DOWNLOAD"),
                     (e.PROGRESS = "PROGRESS"),
-                    (e.LOG = "LOG"),
-                    (e.MOUNT = "MOUNT"),
-                    (e.UNMOUNT = "UNMOUNT");
+                    (e.LOG = "LOG");
             })(t || (t = {}));
         const r = (() => {
                 let e = 0;
@@ -80,8 +79,6 @@
                             case t.LOAD:
                                 (this.loaded = !0), this.#t[e](r);
                                 break;
-                            case t.MOUNT:
-                            case t.UNMOUNT:
                             case t.EXEC:
                             case t.WRITE_FILE:
                             case t.READ_FILE:
@@ -90,6 +87,7 @@
                             case t.CREATE_DIR:
                             case t.LIST_DIR:
                             case t.DELETE_DIR:
+                            case t.MOUNT:
                                 this.#t[e](r);
                                 break;
                             case t.LOG:
@@ -104,20 +102,11 @@
                         delete this.#t[e], delete this.#s[e];
                     });
             };
-            #i = ({ type: e, data: t }, s = [], o) =>
+            #i = ({ type: e, data: t }, s = []) =>
                 this.#e
-                    ? new Promise((a, i) => {
-                          const n = r();
-                          this.#e && this.#e.postMessage({ id: n, type: e, data: t }, s),
-                              (this.#t[n] = a),
-                              (this.#s[n] = i),
-                              o?.addEventListener(
-                                  "abort",
-                                  () => {
-                                      i(new DOMException(`Message # ${n} was aborted`, "AbortError"));
-                                  },
-                                  { once: !0 }
-                              );
+                    ? new Promise((a, o) => {
+                          const i = r();
+                          this.#e && this.#e.postMessage({ id: i, type: e, data: t }, s), (this.#t[i] = a), (this.#s[i] = o);
                       })
                     : Promise.reject(a);
             on(e, t) {
@@ -126,28 +115,27 @@
             off(e, t) {
                 "log" === e ? (this.#r = this.#r.filter((e) => e !== t)) : "progress" === e && (this.#a = this.#a.filter((e) => e !== t));
             }
-            load = (r = {}) => (this.#e || (this.#e = new Worker("https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/umd/814.ffmpeg.js", {type: void 0}), this.#o()), this.#i({
+            load = (r = {}) => (this.#e || (this.#e = new Worker(r.workerLoadURL ? r.workerLoadURL : new URL(e.p + e.u(814), e.b), {type: void 0}), this.#o()), this.#i({
                 type: t.LOAD,
                 data: r
-            }));
-            exec = (e, s = -1, { signal: r } = {}) => this.#i({ type: t.EXEC, data: { args: e, timeout: s } }, void 0, r);
+            }));            
+            exec = (e, s = -1) => this.#i({ type: t.EXEC, data: { args: e, timeout: s } });
             terminate = () => {
                 const e = Object.keys(this.#s);
                 for (const t of e) this.#s[t](o), delete this.#s[t], delete this.#t[t];
                 this.#e && (this.#e.terminate(), (this.#e = null), (this.loaded = !1));
             };
-            writeFile = (e, s, { signal: r } = {}) => {
-                const a = [];
-                return s instanceof Uint8Array && a.push(s.buffer), this.#i({ type: t.WRITE_FILE, data: { path: e, data: s } }, a, r);
+            writeFile = (e, s) => {
+                const r = [];
+                return s instanceof Uint8Array && r.push(s.buffer), this.#i({ type: t.WRITE_FILE, data: { path: e, data: s } }, r);
             };
-            mount = (e, s, r) => this.#i({ type: t.MOUNT, data: { fsType: e, options: s, mountPoint: r } }, []);
-            unmount = (e) => this.#i({ type: t.UNMOUNT, data: { mountPoint: e } }, []);
-            readFile = (e, s = "binary", { signal: r } = {}) => this.#i({ type: t.READ_FILE, data: { path: e, encoding: s } }, void 0, r);
-            deleteFile = (e, { signal: s } = {}) => this.#i({ type: t.DELETE_FILE, data: { path: e } }, void 0, s);
-            rename = (e, s, { signal: r } = {}) => this.#i({ type: t.RENAME, data: { oldPath: e, newPath: s } }, void 0, r);
-            createDir = (e, { signal: s } = {}) => this.#i({ type: t.CREATE_DIR, data: { path: e } }, void 0, s);
-            listDir = (e, { signal: s } = {}) => this.#i({ type: t.LIST_DIR, data: { path: e } }, void 0, s);
-            deleteDir = (e, { signal: s } = {}) => this.#i({ type: t.DELETE_DIR, data: { path: e } }, void 0, s);
+            readFile = (e, s = "binary") => this.#i({ type: t.READ_FILE, data: { path: e, encoding: s } });
+            deleteFile = (e) => this.#i({ type: t.DELETE_FILE, data: { path: e } });
+            rename = (e, s) => this.#i({ type: t.RENAME, data: { oldPath: e, newPath: s } });
+            createDir = (e) => this.#i({ type: t.CREATE_DIR, data: { path: e } });
+            listDir = (e) => this.#i({ type: t.LIST_DIR, data: { path: e } });
+            deleteDir = (e) => this.#i({ type: t.DELETE_DIR, data: { path: e } });
+            mount = (e, s, r) => this.#i({ type: t.MOUNT, data: { type: e, opts: s, mountpoint: r } });
         }
         return s;
     })()
