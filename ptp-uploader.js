@@ -18,9 +18,7 @@ async function getFileFromEntry(fileEntry) {
         fileEntry.file(resolve, reject);
     });
 }
-let getWorkerUrl = "https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/814.ffmpeg.js";
-let getWASMUrl = "https://github.com/coollachlan8/ptp-uploader/raw/main/utils/ffmpeg-core.wasm";
-let getCoreUrl = "https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/ffmpeg-core.js"
+
 let utils = [
   { url: "https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/814.ffmpeg.js", type: "application/js", store: "workerUrl"},
   { url: "https://github.com/coollachlan8/ptp-uploader/raw/main/utils/ffmpeg-core.wasm", type: "application/wasm", store: "wasmUrl"},
