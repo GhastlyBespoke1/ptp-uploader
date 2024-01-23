@@ -4,8 +4,8 @@
 // @author      Perilune
 // @namespace   https://github.com/soranosita
 // @match       https://passthepopcorn.me/upload.php
-// @require     https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/mediainfo.lib.js
-// @require     https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/ffmpeg.js
+// @require     https://raw.githubusercontent.com/ghastlybespoke1/ptp-uploader/main/utils/mediainfo.lib.js
+// @require     https://raw.githubusercontent.com/ghastlybespoke1/ptp-uploader/main/utils/ffmpeg.js
 // @grant       GM_xmlhttpRequest
 // @version     0.1
 // ==/UserScript==
@@ -20,9 +20,9 @@ async function getFileFromEntry(fileEntry) {
 }
 
 let utils = [
-  { url: "https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/814.ffmpeg.js", type: "application/js", store: "workerUrl"},
-  { url: "https://github.com/coollachlan8/ptp-uploader/raw/main/utils/ffmpeg-core.wasm", type: "application/wasm", store: "wasmUrl"},
-  { url: "https://raw.githubusercontent.com/coollachlan8/ptp-uploader/main/utils/ffmpeg-core.js", type: "application/js", store: "ffmpegCore"},
+  { url: "https://raw.githubusercontent.com/ghastlybespoke1/ptp-uploader/main/utils/814.ffmpeg.js", type: "application/js", store: "workerUrl"},
+  { url: "https://github.com/ghastlybespoke1/ptp-uploader/raw/main/utils/ffmpeg-core.wasm", type: "application/wasm", store: "wasmUrl"},
+  { url: "https://raw.githubusercontent.com/ghastlybespoke1/ptp-uploader/main/utils/ffmpeg-core.js", type: "application/js", store: "ffmpegCore"},
 ]
 
 let urls = { wasmUrl: "", workerUrl: "", ffmpegCore: ""};
